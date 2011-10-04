@@ -6,4 +6,5 @@ Gunyoki::Application.routes.draw do
     resources :stats, :only => [:index]
   end
 
+  root :to => 'application#root'
 end

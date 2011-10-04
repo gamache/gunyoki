@@ -1,14 +1,15 @@
 class CreateGames < ActiveRecord::Migration
   def change
     create_table :games do |t|
-      t.integer :player_id, :null => false
+      t.integer :player_id
       t.integer :tournament_id
 
+      t.string                :reported_game_id
       t.string                :player_name
       t.string                :role
       t.string                :race
-      t.string                :gender
-      t.string                :alignment
+      t.string                :start_gender
+      t.string                :start_alignment
       t.string                :end_gender
       t.string                :end_alignment
 
@@ -19,10 +20,12 @@ class CreateGames < ActiveRecord::Migration
       t.string                :end_msg
       t.string                :end_loc
       t.integer               :deaths
+      t.integer               :extinctions
+      t.integer               :end_dungeon
 
       t.integer               :turns
-      t.datetime              :start_time
-      t.datetime              :end_time
+      t.datetime              :started_at
+      t.datetime              :ended_at
       t.integer               :seconds_played
       t.integer               :score
 
@@ -39,7 +42,7 @@ class CreateGames < ActiveRecord::Migration
       t.boolean               :did_mines
       t.boolean               :did_sokoban
       t.boolean               :killed_medusa
-      t.integer               :achievements, :default => 0
+      t.integer               :achievements
 
       ## the conduct bitfield, lsb to msb
       t.boolean               :foodless
@@ -54,7 +57,7 @@ class CreateGames < ActiveRecord::Migration
       t.boolean               :wishless
       t.boolean               :artifact_wishless
       t.boolean               :genocideless
-      t.integer               :conducts, :default => 0
+      t.integer               :conducts
 
       t.timestamps
     end

@@ -11,9 +11,24 @@
 #
 # It's strongly recommended to check this file into your version control system.
 
-ActiveRecord::Schema.define(:version => 20111003194407) do
+ActiveRecord::Schema.define(:version => 20111009121500) do
+
+  create_table "accounts", :force => true do |t|
+    t.integer  "player_id",  :null => false
+    t.integer  "server_id",  :null => false
+    t.string   "name",       :null => false
+    t.datetime "created_at"
+    t.datetime "updated_at"
+  end
+
+  add_index "accounts", ["name"], :name => "index_accounts_on_name"
+  add_index "accounts", ["player_id"], :name => "index_accounts_on_player_id"
+  add_index "accounts", ["server_id"], :name => "index_accounts_on_server_id"
 
   create_table "clans", :force => true do |t|
+    t.string   "name",        :null => false
+    t.text     "description"
+    t.integer  "owner_id"
     t.datetime "created_at"
     t.datetime "updated_at"
   end
@@ -88,13 +103,27 @@ ActiveRecord::Schema.define(:version => 20111003194407) do
   add_index "games", ["tournament_id"], :name => "index_games_on_tournament_id"
 
   create_table "players", :force => true do |t|
-    t.string   "name",       :null => false
+    t.string   "name",            :null => false
+    t.string   "sha512_password"
+    t.string   "salt"
+    t.datetime "created_at"
+    t.datetime "updated_at"
+  end
+
+  create_table "servers", :force => true do |t|
+    t.string   "name",                           :null => false
+    t.text     "description"
+    t.integer  "owner_id"
+    t.string   "protocol",    :default => "ssh"
+    t.string   "hostname"
+    t.integer  "port"
     t.datetime "created_at"
     t.datetime "updated_at"
   end
 
   create_table "tournaments", :force => true do |t|
-    t.string   "name",       :null => false
+    t.string   "name",        :null => false
+    t.text     "description"
     t.datetime "starts_at"
     t.datetime "ends_at"
     t.datetime "created_at"

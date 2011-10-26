@@ -1,17 +1,73 @@
-require 'pp'
 class Game < ActiveRecord::Base
+  belongs_to :player
+  has_many :clans, :through => :player
 
-  def self.from_xlogfile_line(line)
+  ## NB: adding more validations here will require extra effort below,
+  ## in self.import_xlog!
+  validates_uniqueness_of :reported_game_id, :scope => :tournament_id
+
+  #### CACHING STUFF
+
+  def cache_key
+    "#{self.reported_game_id}_#{self.tournament_id}"
+  end
+
+  if Gunyoki::Application.config.action_controller.perform_caching
+    ## Return true if this game might not yet be in the db.
+    ## (In reality, we're just checking the cache)
+    def might_not_exist?
+      Rails.cache.read(self.cache_key) ? false : true
+    end
+
+    def save
+      rv = super
+      Rails.cache.write(self.cache_key, self) if rv
+      rv
+    end
+
+    def save!
+      rv = super
+      Rails.cache.write(self.cache_key, self) # no 'if rv' needed
+      rv
+    end
+
+    def find(id)
+      Rails.cache.fetch(self.cache_key) do
+        super
+      end
+    end
+  else
+    def might_not_exist?; true end
+  end
+
+
+  #### XLOG STUFF
+
+  def self.import_xlog!(xlog, game_args={})
+    File.open(xlog, 'r') do |fh|
+      ## don't need to wrap this in a transaction -- partial imports are fine
+      fh.each_with_index do |l,i|
+        begin
+          g = Game.from_xlog_line(l, game_args)
+          g.save! if g.might_not_exist?
+        rescue ActiveRecord::RecordInvalid => e
+          ## do nothing -- this indicates a duplicate record, which is ok
+        end
+      end
+    end
+  end
+
+  def self.from_xlog_line(line, game_args={})
     match = line.match(/^(\d\S+)\s+(.+)$/)
     return nil unless match
     id, fields = match[1..2]
-    pp field_hash = fields.scan(/([^=:]+)=([^=:]*)/).
+    field_hash = fields.scan(/([^=:]+)=([^=:]*)/).
                         inject({}){|hsh,pair| hsh.merge(pair[0] => pair[1])}
-    return Game.from_xlogfile_hash(field_hash.merge(:id => id))
+    return Game.from_xlog_hash(field_hash.merge('id' => id), game_args)
   end
 
-  def self.from_xlogfile_hash(hsh)
-    g = Game.new
+  def self.from_xlog_hash(hsh, game_args={})
+    g = Game.new(game_args)
     { :reported_game_id => :id,
       :score => :points,
       :player_name => :name,
@@ -33,8 +89,8 @@ class Game < ActiveRecord::Base
       g.send("#{game_field}=", hsh[hash_key.to_s])
     end
 
-    g.start_time = Time.at(hsh['starttime'].to_i)
-    g.end_time   = Time.at(hsh['endtime'].to_i)
+    g.started_at = Time.at(hsh['starttime'].to_i)
+    g.ended_at   = Time.at(hsh['endtime'].to_i)
 
     return g.apply_achievements(hsh['achieve'].hex).
              apply_conducts(hsh['conduct'].hex)

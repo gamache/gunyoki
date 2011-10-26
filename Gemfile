@@ -10,6 +10,7 @@ gem 'mysql'
 
 gem 'haml'
 
+gem 'dalli'
 
 
 # Gems used only for assets and not required

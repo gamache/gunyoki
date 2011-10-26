@@ -64,6 +64,7 @@ class CreateGames < ActiveRecord::Migration
     add_index :games, :player_id
     add_index :games, :tournament_id
     add_index :games, :ascended
+    add_index :games, :reported_game_id
   end
 end
 

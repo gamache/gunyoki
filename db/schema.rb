@@ -100,6 +100,7 @@ ActiveRecord::Schema.define(:version => 20111009121500) do
 
   add_index "games", ["ascended"], :name => "index_games_on_ascended"
   add_index "games", ["player_id"], :name => "index_games_on_player_id"
+  add_index "games", ["reported_game_id"], :name => "index_games_on_reported_game_id"
   add_index "games", ["tournament_id"], :name => "index_games_on_tournament_id"
 
   create_table "players", :force => true do |t|

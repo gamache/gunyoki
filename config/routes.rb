@@ -5,7 +5,7 @@ Gunyoki::Application.routes.draw do
   resources :games, :only => [:index, :create, :show] 
 
   resources :players, :only => [:index, :create, :update, :show] do
-    get :games, :to => 'games#index'
+    get :games
     get :authenticate
     post :change_password
   end

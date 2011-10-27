@@ -2,15 +2,16 @@ class Game < ActiveRecord::Base
   belongs_to :player
   has_many :clans, :through => :player
 
+
+
   ## NB: adding more validations here will require extra effort below,
   ## in self.import_xlog!
   validates_uniqueness_of :reported_game_id, :scope => :tournament_id
 
   #### CACHING STUFF
 
-  def cache_key
-    "#{self.reported_game_id}_#{self.tournament_id}"
-  end
+  def self.cache_key(id); "game-#{id}" end
+  def cache_key; self.class.cache_key(self.id) end
 
   if Gunyoki::Application.config.action_controller.perform_caching
     ## Return true if this game might not yet be in the db.
@@ -31,12 +32,16 @@ class Game < ActiveRecord::Base
       rv
     end
 
-    def find(id)
-      Rails.cache.fetch(self.cache_key) do
-        super
-      end
+    def self.find_by_id(id)
+      Rails.cache.fetch(self.cache_key(id)) {super}
     end
-  else
+
+    def player
+      return nil unless self.player_id
+      Player.find_by_id(self.player_id)
+    end
+
+  else # no caching
     def might_not_exist?; true end
   end
 
@@ -48,12 +53,31 @@ class Game < ActiveRecord::Base
       ## don't need to wrap this in a transaction -- partial imports are fine
       fh.each_with_index do |l,i|
         begin
-          g = Game.from_xlog_line(l, game_args)
-          g.save! if g.might_not_exist?
+          g = Game.save_from_xlog_line!(l, game_args)
         rescue ActiveRecord::RecordInvalid => e
           ## do nothing -- this indicates a duplicate record, which is ok
         end
       end
+    end
+  end
+
+  def self.save_from_xlog_line!(line, game_args={})
+    g = Game.from_xlog_line(line, game_args)
+
+    ## Assign, or create+assign a Player if none specified
+    if !g.player_id && g.player_name
+      p = Player.find_by_name(g.player_name)
+      unless p
+        p = Player.new(:name => g.player_name)
+        p.save!
+      end
+      g.player_id = p.id
+    end
+
+    begin
+      g.save! if g.might_not_exist?
+    rescue ActiveRecord::RecordInvalid => e
+      ## do nothing -- this indicates a duplicate record, which is ok
     end
   end
 
@@ -64,6 +88,11 @@ class Game < ActiveRecord::Base
     field_hash = fields.scan(/([^=:]+)=([^=:]*)/).
                         inject({}){|hsh,pair| hsh.merge(pair[0] => pair[1])}
     return Game.from_xlog_hash(field_hash.merge('id' => id), game_args)
+  end
+
+  def self.save_from_xlog_hash!(hsh, game_args={})
+    g = from_xlog_hash(hsh, game_args)
+
   end
 
   def self.from_xlog_hash(hsh, game_args={})
